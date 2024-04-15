@@ -1,106 +1,38 @@
-const cityInput = document.querySelector(".city-input");
-const searchButton = document.querySelector(".search-btn");
-const locationButton = document.querySelector(".location-btn");
-const currentWeatherDiv = document.querySelector(".current-weather");
-const weatherCardsDiv = document.querySelector(".weather-cards");
-const cl = console.log.bind(console); // use cl instead of console.log
+const inputBox = document.getElementById("input-box")
+const listContainer = document.getElementById("list-container")
 
-const API_KEY = "16c44e6ed8f460c8b664b28613a83d9f"; // my own API Key for OpenWeatherMap API
-
-const createWeatherCard = (cityName, weatherItem, index) => {
-    if (index === 0) { // HTML for the main weather card
-        //cl(index);
-        return `<div class="details">
-                    <h2>${cityName} (${weatherItem.dt_txt.split(" ")[0]})</h2>
-                    <h4>Temperature: ${(weatherItem.main.temp - 273.15).toFixed(2)}°C</h4>
-                    <h4>Wind: ${weatherItem.wind.speed} M/s</h4>
-                    <h4>Humidity: ${weatherItem.main.humidity}%</h4>
-                </div>
-                <div class="icon">
-                    <img src="https://openweathermap.org/img/wn/${weatherItem.weather[0].icon}@4x.png" alt="weather-icon">
-                    <h4>${weatherItem.weather[0].description}</h4>
-                </div>`;
-    } else { // HTML for the other five days forecast card
-        return `<li class="card">
-                    <h3>(${weatherItem.dt_txt.split(" ")[0]})</h3>
-                    <img src="https://openweathermap.org/img/wn/${weatherItem.weather[0].icon}@2x.png" alt="weather-icon">
-                    <h4>Temp: ${(weatherItem.main.temp - 273.15).toFixed(2)}°C</h4>
-                    <h4>Wind: ${weatherItem.wind.speed} M/s</h4>
-                    <h4>Humidity: ${weatherItem.main.humidity}%</h4>
-                </li>`;
+function addTask(){
+    if (inputBox.value === '') {
+        alert("That cannot be empty.");
+    } else {
+        let li = document.createElement("li")
+        li.innerHTML = inputBox.value;
+        listContainer.appendChild(li);
+        let span = document.createElement("span");
+        span.innerHTML = "\u00d7";
+        li.appendChild(span);
     }
-
+    inputBox.value = "";
+    saveData();
 }
 
-const getWeatherDetails = (cityName, lat, lon) => {
-    const WEATHER_API_URL = `http://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${API_KEY}`;
+listContainer.addEventListener("click", function(e){
+    if (e.target.tagName === "LI") {
+        e.target.classList.toggle("checked");
+        saveData();
+    } 
+    else if (e.target.tagName === "SPAN"){
+        e.target.parentElement.remove();
+        saveData();
+    }
+}, false);
 
-    fetch(WEATHER_API_URL).then(res => res.json()).then(data => {
-        // Filter the forecasts to get only one forecast per day
-        //cl(data);
-        const uniqueForecastDays = [];
-        const fiveDaysForecast = data.list.filter(forecast => {
-            const forecastDate = new Date(forecast.dt_txt).getDate();
-            if(!uniqueForecastDays.includes(forecastDate)) {
-                return uniqueForecastDays.push(forecastDate);
-            }
-        });
-
-        // Clearing previous weather data
-        cityInput.value = "";
-        currentWeatherDiv.innerHTML = "";
-        weatherCardsDiv.innerHTML = "";
-
-        //cl(fiveDaysForecast);
-        // Creating weather card and adding them to the DOM
-        fiveDaysForecast.forEach((weatherItem, index) => {
-            if (index === 0) {
-                currentWeatherDiv.insertAdjacentHTML("beforeend", createWeatherCard(cityName, weatherItem, index));
-            }else {
-                weatherCardsDiv.insertAdjacentHTML("beforeend", createWeatherCard(cityName, weatherItem, index));
-            }
-        });
-    }).catch(() => {
-        alert("An error occurred while fetching the weather forecast!");
-    });
+function saveData(){
+    localStorage.setItem("data", listContainer.innerHTML);
 }
 
-const getCityCoordinates = () => {
-    const cityName = cityInput.value.trim(); // Get the city name entered by user and remove extra spaces
-    if (!cityName) return; // Return if cityName is empty
-    const GEOCODING_API_URL = `http://api.openweathermap.org/geo/1.0/direct?q=${cityName}&limit=1&appid=${API_KEY}`;
-
-    // Get entered city coordinates (name, latitude, longitude) from the API response
-    fetch(GEOCODING_API_URL).then(res => res.json()).then(data => {
-        if(!data.length) return alert(`No coordinates found for ${cityName}`);
-        const { name, lat, lon } = data[0];
-        getWeatherDetails(name, lat, lon);
-    }).catch(() => {
-        alert("An error occurred while fetching the coordinates!");
-    });
+function showTask(){
+    listContainer.innerHTML = localStorage.getItem("data");
 }
-
-const getUserCoordinates = () => {
-    navigator.geolocation.getCurrentPosition(
-        position => {
-            const { latitude, longitude } = position.coords; // Get coordinates of user location
-            const REVERSE_GEOCODING_URL = `http://api.openweathermap.org/geo/1.0/reverse?lat=${latitude}&lon=${longitude}&limit=1&appid=${API_KEY}`;
-
-            // Get the city name from coordinates using Reverse GeoCoding API
-            fetch(REVERSE_GEOCODING_URL).then(res => res.json()).then(data => {
-                const { name } = data[0];
-                getWeatherDetails(name, latitude, longitude);
-            }).catch(() => {
-                alert("An error occurred while fetching the city!");
-            });
-        },
-        error => {
-            if(error.code === error.PERMISSION_DENIED) {
-                alert('Geolocation request denied. Please enable location sharing!');
-            }
-        }
-    );
-}
-locationButton.addEventListener("click", getUserCoordinates);
-searchButton.addEventListener("click", getCityCoordinates);
-cityInput.addEventListener("keyup", e => e.key === "Enter" && getCityCoordinates());
+inputBox.addEventListener("keyup", e => e.key === "Enter" && addTask());
+showTask();
